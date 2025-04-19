@@ -1,0 +1,197 @@
+// Add Required JARs
+<!-- pom.xml -->
+<dependencies>
+    <dependency>
+        <groupId>org.hibernate</groupId>
+        <artifactId>hibernate-core</artifactId>
+        <version>5.6.15.Final</version>
+    </dependency>
+    <dependency>
+        <groupId>mysql</groupId>
+        <artifactId>mysql-connector-java</artifactId>
+        <version>8.0.33</version>
+    </dependency>
+</dependencies>
+
+//hibernate.cfg.xml
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE hibernate-configuration PUBLIC
+        "-//Hibernate/Hibernate Configuration DTD 3.0//EN"
+        "http://hibernate.sourceforge.net/hibernate-configuration-3.0.dtd">
+
+<hibernate-configuration>
+    <session-factory>
+        <!-- Database Connection Settings -->
+        <property name="hibernate.connection.driver_class">com.mysql.cj.jdbc.Driver</property>
+        <property name="hibernate.connection.url">jdbc:mysql://localhost:3306/studentdb</property>
+        <property name="hibernate.connection.username">root</property>
+        <property name="hibernate.connection.password">your_password</property>
+
+        <!-- JDBC Connection pool (use built-in) -->
+        <property name="connection.pool_size">1</property>
+
+        <!-- SQL Dialect -->
+        <property name="hibernate.dialect">org.hibernate.dialect.MySQL8Dialect</property>
+
+        <!-- Show SQL -->
+        <property name="show_sql">true</property>
+
+        <!-- Automatically create/drop tables -->
+        <property name="hbm2ddl.auto">update</property>
+
+        <!-- Entity mapping -->
+        <mapping class="com.example.Student"/>
+    </session-factory>
+</hibernate-configuration>
+
+//Student.java (Entity Class)
+package com.example;
+
+import javax.persistence.*;
+
+@Entity
+@Table(name = "students")
+public class Student {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private int id;
+
+    @Column(name = "name")
+    private String name;
+
+    @Column(name = "age")
+    private int age;
+
+    // Constructors
+    public Student() {}
+    
+    public Student(String name, int age) {
+        this.name = name;
+        this.age = age;
+    }
+
+    // Getters and Setters
+    public int getId() { return id; }
+
+    public void setId(int id) { this.id = id; }
+
+    public String getName() { return name; }
+
+    public void setName(String name) { this.name = name; }
+
+    public int getAge() { return age; }
+
+    public void setAge(int age) { this.age = age; }
+
+    @Override
+    public String toString() {
+        return "Student{id=" + id + ", name='" + name + '\'' + ", age=" + age + '}';
+    }
+}
+//HibernateUtil.java
+package com.example;
+
+import org.hibernate.SessionFactory;
+import org.hibernate.cfg.Configuration;
+
+public class HibernateUtil {
+    private static final SessionFactory sessionFactory;
+
+    static {
+        try {
+            sessionFactory = new Configuration().configure().buildSessionFactory();
+        } catch (Throwable ex) {
+            System.err.println("Initial SessionFactory creation failed." + ex);
+            throw new ExceptionInInitializerError(ex);
+        }
+    }
+
+    public static SessionFactory getSessionFactory() {
+        return sessionFactory;
+    }
+}
+
+//StudentDAO.java
+package com.example;
+
+import org.hibernate.Session;
+import org.hibernate.Transaction;
+
+public class StudentDAO {
+
+    public void createStudent(Student student) {
+        Transaction transaction = null;
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            transaction = session.beginTransaction();
+            session.save(student);
+            transaction.commit();
+            System.out.println("Student created: " + student);
+        } catch (Exception e) {
+            if (transaction != null) transaction.rollback();
+            e.printStackTrace();
+        }
+    }
+
+    public Student readStudent(int id) {
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Student student = session.get(Student.class, id);
+            System.out.println("Student read: " + student);
+            return student;
+        }
+    }
+
+    public void updateStudent(Student student) {
+        Transaction transaction = null;
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            transaction = session.beginTransaction();
+            session.update(student);
+            transaction.commit();
+            System.out.println("Student updated: " + student);
+        } catch (Exception e) {
+            if (transaction != null) transaction.rollback();
+            e.printStackTrace();
+        }
+    }
+
+    public void deleteStudent(int id) {
+        Transaction transaction = null;
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Student student = session.get(Student.class, id);
+            if (student != null) {
+                transaction = session.beginTransaction();
+                session.delete(student);
+                transaction.commit();
+                System.out.println("Student deleted: " + student);
+            }
+        } catch (Exception e) {
+            if (transaction != null) transaction.rollback();
+            e.printStackTrace();
+        }
+    }
+}
+
+//Main.java
+package com.example;
+
+public class Main {
+    public static void main(String[] args) {
+        StudentDAO dao = new StudentDAO();
+
+        // Create
+        Student s1 = new Student("Mohit Kumar", 22);
+        dao.createStudent(s1);
+
+        // Read
+        Student readStudent = dao.readStudent(s1.getId());
+
+        // Update
+        readStudent.setAge(23);
+        dao.updateStudent(readStudent);
+
+        // Delete
+        dao.deleteStudent(readStudent.getId());
+    }
+}
+//MySQL Setup
+CREATE DATABASE studentdb;
